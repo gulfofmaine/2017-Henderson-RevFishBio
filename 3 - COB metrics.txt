@@ -1,0 +1,186 @@
+close all
+clear
+clc
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Opens Northeast Coast Data
+% map is a map of the northeast coast (.dat)
+map=load('...dat');
+map_long=map(:,1);
+map_lat=map(:,2);
+clear map
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Opens Smoothed 200 m isobath created with isobath_extractor
+[iso_y, iso_x]=textread('...txt','%f %f','headerlines',1);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Opens Data
+% opens text file of the data put together in 'COB prep for MATLAB.R'
+[ID,    CRUISE6,    STATION,   STRATUM,     YEAR,       MONTH,...
+        DAY,        SEASON,    BOTTEMP,     SURFTEMP,   AVGDEPTH,...
+        lat,        lon,...
+        stock15,   stock23,     stock25,    stock26,    stock28,...
+        stock32,   stock33,     stock72_N,  stock72_S,  stock73_N,...
+        stock73_S, stock74_N,   stock74_S,  stock75,    stock76,...
+        stock77_N, stock77_S,   stock78,    stock84,    stock101,...
+        stock102,  stock103,    stock104,   stock105_N, stock105_S,...
+        stock106_N,stock106_S,  stock108,   stock121,   stock139,...
+        stock141,  stock155,    stock156,   stock163,   stock164,...
+        stock192,  stock193,    stock197,   stock301,...
+        stock311,  stock312,    stock313,   stock502,   stock503]=textread('....txt',...
+        '%f %f %f %f %f %f   %f %s %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f %f %f %f %f   %f', ...
+        'headerlines', 1,'delimiter', '\t');
+
+  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Makes a matrix of the fish stocks to speed up calculations
+fish_data=[stock15,   stock23,     stock25,    stock26,    stock28,...
+           stock32,   stock33,     stock72_N,  stock72_S,  stock73_N,...
+           stock73_S, stock74_N,   stock74_S,  stock75,    stock76,...
+           stock77_N, stock77_S,   stock78,    stock84,    stock101,...
+           stock102,  stock103,    stock104,   stock105_N, stock105_S,...
+           stock106_N,stock106_S,  stock108,   stock121,   stock139,...
+           stock141,  stock155,    stock156,   stock163,   stock164,...
+           stock192,  stock193,    stock197,   stock301,...
+           stock311,  stock312,    stock313,   stock502,   stock503];
+        
+%% sets up titles for graphing
+graph_titles={'stock15',    'stock23',     'stock25',    'stock26',    'stock28',...
+              'stock32',    'stock33',     'stock72_N',  'stock72_S',  'stock73_N',...
+              'stock73_S',  'stock74_N',   'stock74_S',  'stock75',    'stock76',...
+              'stock77_N',  'stock77_S',   'stock78',    'stock84',    'stock101',...
+              'stock102',   'stock103',    'stock104',   'stock105_N', 'stock105_S',...
+              'stock106_N', 'stock106_S',  'stock108',   'stock121',   'stock139',...
+              'stock141',   'stock155',    'stock156',   'stock163',   'stock164',...
+              'stock192',   'stock193',    'stock197',   'stock301',...
+              'stock311',  'stock312',     'stock313',   'stock502',  'stock503'};
+
+stock_titles={'Stock 15 - Smooth dogfish',      'Stock 23 - Winter skate',          'Stock 25 - American shad',...
+              'Stock 26 - Little skate',        'Stock 28- Thorny skate',           'Stock 32 - Atlantic herring', ...
+              'Stock 33 - Alewife',             'Stock 72_N - Silver hake-GoM',     'Stock 72_S - Silver hake',...
+              'Stock 73_N - Cod-GoM',           'Stock 73_S - Cod',                 'Stock 74_N - Haddock-GoM',...
+              'Stock 74_S - Haddock',           'Stock 75 - Pollock',               'Stock 76 - White hake',...
+              'Stock 77_N - Red hake-GoM',      'Stock 77 - Red hake',              'Stock 78 - Spotted hake',...
+              'Stock 84 - Cusk',                'Stock 101 - Atlantic halibut',     'Stock 102 - American plaice',...
+              'Stock 103 - Summer flounder',    'Stock 104 - Fourspot flounder',    'Stock 105_N - YT flounder-GoM',...
+              'Stock 105_S - YT flounder',      'Stock 106_N - Winter flounder-GoM','Stock 106_S - Winter flounder',...
+              'Stock 108 - Windowpane',         'Stock 121 - Atlantic mackeral',    'Stock 139 - Striped Sea Bass',...
+              'Stock 141 - Black Sea Bass',     'Stock 155 - Acadian redfish',      'Stock 156 - Blackbelly rosefish',...
+              'Stock 163 - Longhorn sculpin',   'Stock 164 - Sea raven',            'Stock 192 - Atlantic wolfish',...
+              'Stock 193 - Ocean pout',         'Stock 197 - Goosefish',            'Stock 301 - American lobster',...
+              'Stock 311 - Cancer spp.',        'Stock 312 - Jonah crab',           'Stock 313 - Atl. rock crab',...
+              'Stock 502 - N. shortfin squid',  'Stock 503 - Longfin squid'};
+           
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Loads Shelf Grid for Calculating Along and Across Shelf position
+load('...mat');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Sets up a temporary matrix to hold the along shelf and cross shelf
+%% variables
+%% MatLab works faster is variable exists and MatLab is filling in values
+%% rather than repetively adding records to a variable
+tmpmatrix1=zeros(length(iso_along),length(iso_cross));
+tmpmatrix2=zeros(length(iso_along),length(iso_cross));
+
+for ii=1:length(iso_cross);
+    tmpmatrix1(:,ii)=iso_along';
+end
+
+for ii=1:length(iso_along);
+    tmpmatrix2(ii,:)=iso_cross;
+end
+clear iso_along iso_cross ii
+iso_along=tmpmatrix1;
+iso_cross=tmpmatrix2;
+clear tmpmatrix1 tmpmatrix2
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Calculates along shelf and cross shelf position of each station
+%% Uses a nearest neighbor to derive along shelf and cross shelf position
+%% for a station based on the grid of along-shelf and cross-shelf positions
+disp('Calculating Along-Shelf Position for Each Station')
+disp('This will take a few momnents')
+along = griddata(iso_grid_lat,iso_grid_lon,iso_along,lat,lon,'nearest');
+
+% along = griddata(iso_grid_y,iso_grid_x,iso_along,lat,lon,'nearest');
+disp('Calculating Cross-Shelf Position for Each Station')
+disp('This will take a few momnents')
+cross = griddata(iso_grid_lat,iso_grid_lon,iso_cross,lat,lon,'nearest');
+
+% cross = griddata(iso_grid_y,iso_grid_x,iso_cross,lat,lon,'nearest');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Calculates average lat and lon for each stock for each year
+un_year=unique(YEAR)
+
+%% zz is iterating for each year
+for zz=1:length(un_year);
+%     disp(YEAR)
+    %% selects data for each year and excludes data east of 64.8 (Scotian
+    %% Shelf)
+    a=find(YEAR==un_year(zz) & lon<-64.8203);
+    %% yy is iterating for each stock
+    for yy=1:length(stock_titles);
+        
+        %% mean lat by stock by year
+        lat_mean(zz,yy)=sum((lat(a).*fish_data(a,yy)))./sum(fish_data(a,yy));
+        %% mean lon by stock by year
+        lon_mean(zz,yy)=sum((lon(a).*fish_data(a,yy)))./sum(fish_data(a,yy));
+
+        %% mean along by stock by year
+        along_mean(zz,yy)=sum((along(a).*fish_data(a,yy)))./sum(fish_data(a,yy));
+
+        %% mean cross by stock by year
+        cross_mean(zz,yy)=sum((cross(a).*fish_data(a,yy)))./sum(fish_data(a,yy));
+
+        %% finds row in along and cross shelf grid associated with closest mean value and 
+        %% converts to grid mean along and mean cross back to a lat and lon
+        a1=find(abs(along_mean(zz,yy)-iso_along(:,1))==min(abs(along_mean(zz,yy)-iso_along(:,1))));
+        b1=find(abs(cross_mean(zz,yy)-iso_cross(1,:))==min(abs(cross_mean(zz,yy)-iso_cross(1,:))));
+
+        if length(a1)==0
+            disp('no data')
+            rotate_lat_mean(zz,yy)=NaN;
+            rotate_lon_mean(zz,yy)=NaN;
+        else
+            if length(b1) > 1
+                disp('MORE THAN 1')
+                rotate_lat_mean(zz,yy)=iso_grid_lat(a1,b1(1))+iso_grid_lat(a1,b1(2))/2;
+                rotate_lon_mean(zz,yy)=iso_grid_lon(a1,b1(1))+iso_grid_lon(a1,b1(2))/2;
+            else
+                rotate_lat_mean(zz,yy)=iso_grid_lat(a1,b1);
+                rotate_lon_mean(zz,yy)=iso_grid_lon(a1,b1);
+            end 
+        end
+        
+%        rotate_lat_mean(zz,yy)=iso_grid_y(a1,b1);
+%        rotate_lon_mean(zz,yy)=iso_grid_x(a1,b1);
+        clear a1 b1
+
+    end
+   
+    clear a
+    %% Griddata to find rotated lat and lon
+    %% Method used above is much faster and accuarate to within 0.01
+    %% degrees
+%     rotate_lon_mean1(zz,:)=griddata(iso_along,iso_cross,iso_grid_lon,along_mean(zz,:),cross_mean(zz,:))
+%     rotate_lon_mean1(zz,:)=griddata(iso_along,iso_cross,iso_grid_lon,along_mean(zz,:),cross_mean(zz,:))
+end
+
+%% Saves along and cross shelf position that matches the initial trawl
+%% survey data (nyedata)
+
+A=reshape(lat_mean,[],1)
+B=reshape(lon_mean,[],1)
+C=reshape(rotate_lat_mean,[],1)
+D=reshape(rotate_lon_mean,[],1)
+E=reshape(along_mean,[],1)
+F=reshape(cross_mean,[],1)
+
+
+data_save=[A B C D E F];
+save('...COB out.txt','data_save','-ascii','-tabs')
+
